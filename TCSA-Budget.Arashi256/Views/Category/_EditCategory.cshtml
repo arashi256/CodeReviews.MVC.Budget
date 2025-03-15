@@ -1,0 +1,11 @@
+﻿@model Category
+<form asp-action="Edit" method="post">
+    <!-- Ensure the category ID is preserved -->
+    <input type="hidden" asp-for="Id" />
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label">Category Name</label>
+        <input asp-for="Name" class="form-control" required />
+        <span asp-validation-for="Name" class="text-danger"></span> <!-- Display validation message -->
+    </div>
+    <button type="submit" class="btn btn-warning mt-2">Update</button>
+</form>

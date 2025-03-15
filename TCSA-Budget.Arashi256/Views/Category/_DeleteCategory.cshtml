@@ -1,0 +1,8 @@
+﻿@model Category
+<form asp-action="DeleteConfirmed" method="post">
+    <input type="hidden" name="Id" value="@Model.Id" />
+    <p>Are you sure you want to delete category <strong>@Model.Name</strong>?</p>
+    <p><strong>WARNING:</strong> This will delete all transactions under this category!</p>
+    <p>This action cannot be undone.</p>
+    <button type="submit" class="btn btn-danger">Delete</button>
+</form>

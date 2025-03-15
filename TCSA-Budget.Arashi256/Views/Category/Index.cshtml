@@ -1,0 +1,214 @@
+﻿@model List<TCSA_Budget.Arashi256.Models.Category>
+@{
+    ViewData["PageName"] = "category-index";
+}
+<div class="container mt-4 p-4 rounded">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold text-light">Categories</h2>
+        <!-- Add new category button -->
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createCategoryModal">+ Add Category</button>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-body rounded-5">
+            <table class="table table-dark table-hover text-center mb-0">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th class="text-start ps-3 w-75">Category Name</th> <!-- Ensures category name takes most space -->
+                        <th class="text-center w-25"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <!-- Each category in the list -->
+                        <tr>
+                            <td class="text-start ps-3">@item.Name</td>
+                            <td class="text-end pe-3">
+                                <div class="d-flex flex-column flex-md-row gap-2 justify-content-end">
+                                    <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal-@item.Id">Edit</button>
+                                    <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-@item.Id">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- Create Category Modal -->
+<div class="modal fade" id="createCategoryModal" tabindex="-1" data-bs-backdrop="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h4 class="modal-title">Add Category</h4>
+                <button type="button" class="btn-close text-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @await Html.PartialAsync("_CreateCategory", new TCSA_Budget.Arashi256.Models.Category())
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Ensure Create Modal Reopens on Validation Failure -->
+@if (ViewData["ShowCreateModal"] as bool? == true)
+{
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var myModal = new bootstrap.Modal(document.getElementById("createCategoryModal"));
+            myModal.show();
+        });
+    </script>
+}
+@foreach (var item in Model)
+{
+    <!-- Edit Category Modal -->
+    <div class="modal fade @(ViewData["ShowEditModal"] as int? == item.Id ? "show" : "")" id="editModal-@item.Id" tabindex="-1" data-original-name="@item.Name" data-bs-backdrop="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-white">
+                    <h4 class="modal-title">Edit Category</h4>
+                    <button type="button" class="btn-close text-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    @await Html.PartialAsync("_EditCategory", item)
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Delete Category Modal -->
+    <div class="modal fade" id="deleteModal-@item.Id" data-bs-backdrop="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h4 class="modal-title">Delete Category</h4>
+                    <button type="button" class="btn-close text-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    @await Html.PartialAsync("_DeleteCategory", item)
+                </div>
+            </div>
+        </div>
+    </div>
+}
+<!-- Here be Dragons, never ever touch this -->
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Reference to the create category modal.
+            var createCategoryModal = document.getElementById("createCategoryModal");
+            if (createCategoryModal) {
+                // Reset inputs and validation messages when the create modal is closed.
+                createCategoryModal.addEventListener("hidden.bs.modal", function () {
+                    this.querySelectorAll("input").forEach(input => input.value = "");
+                    this.querySelectorAll(".text-danger").forEach(span => span.textContent = "");
+                    restorePageState(); // Restore scrollbar state after modal close
+                });
+                // Reset inputs and validation messages when the create modal is opened.
+                createCategoryModal.addEventListener("show.bs.modal", function () {
+                    this.querySelectorAll(".text-danger").forEach(span => span.textContent = "");
+                    this.querySelectorAll("input").forEach(input => input.value = "");
+                    fixModalScrollbar(); // Ensure the scrollbar state remains consistent.
+                });
+            }
+            // Ensure all modals handle scrollbar restoration correctly.
+            document.querySelectorAll(".modal").forEach(modal => {
+                modal.addEventListener("hidden.bs.modal", function () {
+                    // Cleanup modal instance to avoid Bootstrap conflicts
+                    var bsModal = bootstrap.Modal.getInstance(this);
+                    if (bsModal) bsModal.dispose();
+                    // Hide modal properly and remove Bootstrap's modal-open class.
+                    this.classList.remove("show");
+                    this.style.display = "none";
+                    document.body.classList.remove("modal-open");
+                    // Remove any remaining modal backdrop.
+                    var backdrop = document.querySelector(".modal-backdrop");
+                    if (backdrop) backdrop.remove();
+                    restorePageState(); // Restore scrollbar behavior.
+                });
+                // Fix scrollbar behavior when opening modals.
+                modal.addEventListener("show.bs.modal", function () {
+                    fixModalScrollbar();
+                });
+            });
+            // Handle opening of edit modals.
+            document.querySelectorAll("[data-bs-target^='#editModal-']").forEach(button => {
+                button.addEventListener("click", function () {
+                    var modalId = this.getAttribute("data-bs-target").substring(1); // Get modal ID.
+                    var editModalElement = document.getElementById(modalId);
+                    if (editModalElement) {
+                        // Reset input fields to their original values.
+                        var nameInput = editModalElement.querySelector("input[name='Name']");
+                        if (nameInput) nameInput.value = editModalElement.getAttribute("data-original-name");
+                        // Clear any previous validation error messages.
+                        editModalElement.querySelectorAll(".text-danger").forEach(span => span.textContent = "");
+                        // Open the edit modal.
+                        var editModal = new bootstrap.Modal(editModalElement);
+                        editModal.show();
+                        // Fix scrollbar and layout shifting for edit modal.
+                        setTimeout(() => {
+                            fixEditModalScrollbar(editModalElement);
+                        }, 10);
+                    }
+                });
+            });
+            // Automatically open an Edit Modal if a duplicate error occurred on page load.
+            var editModalId = "@ViewData["ShowEditModal"]";
+            if (editModalId && editModalId !== "null") {
+                var editModalElement = document.getElementById("editModal-" + editModalId);
+                if (editModalElement) {
+                    var myEditModal = new bootstrap.Modal(editModalElement);
+                    myEditModal.show();
+                    fixEditModalScrollbar(editModalElement);
+                }
+            }
+            // Function to maintain proper scrollbar behavior when opening modals.
+            function fixModalScrollbar() {
+                let body = document.body;
+                let scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+                // Determine if a scrollbar existed before opening the modal.
+                let hadScrollbar = document.documentElement.scrollHeight > window.innerHeight;
+                body.setAttribute("data-scrollbar-state", hadScrollbar ? "true" : "false");
+                // Preserve padding to prevent layout shift.
+                if (scrollbarWidth > 0) {
+                    body.style.paddingRight = `${scrollbarWidth}px`;
+                } else {
+                    body.style.paddingRight = "";
+                }
+                body.classList.add("modal-open"); // Ensure the modal does not trigger unintended scrolling.
+            }
+            // Function to specifically fix scrollbar behavior for edit modal.
+            function fixEditModalScrollbar(modalElement) {
+                let body = document.body;
+                if (modalElement) {
+                    let scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+                    if (scrollbarWidth > 0) {
+                        body.style.paddingRight = `${scrollbarWidth}px`;
+                    } else {
+                        body.style.paddingRight = "";
+                    }
+                }
+            }
+            // Function to restore correct scrollbar behavior when modals are closed.
+            function restorePageState() {
+                let body = document.body;
+                body.classList.remove("modal-open");
+                // Restore previous scrollbar state only if it was present before.
+                if (body.getAttribute("data-scrollbar-state") === "true") {
+                    body.style.overflowY = "scroll"; // Keep scrollbar if it was originally there.
+                } else {
+                    body.style.overflow = ""; // Remove scrollbar if not needed.
+                }
+                // Ensure padding is removed only when NO modals are open.
+                if (!document.querySelector(".modal.show")) {
+                    body.style.paddingRight = "";
+                }
+                body.removeAttribute("data-scrollbar-state"); // Cleanup attribute.
+            }
+            // Fix: Ensure empty scrollbar disappears when resizing/maximising the window.
+            window.addEventListener("resize", function () {
+                restorePageState();
+            });
+        });
+    </script>
+}

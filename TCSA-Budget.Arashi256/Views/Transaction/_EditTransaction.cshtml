@@ -1,0 +1,47 @@
+﻿@model TCSA_Budget.Arashi256.Models.Transaction
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="All" class="text-danger"></div> <!-- Show validation errors -->
+    <!-- Category -->
+    <div class="mb-3">
+        <label for="CategoryId" class="form-label">Category</label>
+        <select asp-for="CategoryId" class="form-control" required>
+            <option value="">Select a Category</option>
+            @{
+                var categories = ViewData["Categories"] as List<TCSA_Budget.Arashi256.Models.Category>;
+            }
+            @if (categories != null && categories.Any()) // Prevents null reference warning.
+            {
+                foreach (var category in categories)
+                {
+                    <option value="@category.Id" selected="@(category.Id == Model.CategoryId ? "selected" : null)">
+                        @category.Name
+                    </option>
+                }
+            }
+        </select>
+        <span asp-validation-for="CategoryId" class="text-danger"></span>
+    </div>
+    <!-- Description-->
+    <div class="mb-3">
+        <label for="Description" class="form-label">Description</label>
+        <input asp-for="Description" class="form-control" required />
+        <span asp-validation-for="Description" class="text-danger"></span>
+    </div>
+    <!-- Amount -->
+    <div class="mb-3">
+        <label asp-for="Amount" class="form-label">Amount</label>
+        <input asp-for="Amount" class="form-control" type="number" min="0.01" step="0.01" required
+               oninvalid="this.setCustomValidity('Please enter a valid positive amount.')"
+               oninput="this.setCustomValidity('')">
+        <span asp-validation-for="Amount" class="text-danger"></span>
+    </div>
+    <!-- Date -->
+    <div class="mb-3">
+        <label for="Date" class="form-label">Date</label>
+        <input asp-for="Date" type="date" class="form-control" required
+               value="@Model.Date.ToString("yyyy-MM-dd")" />
+        <span asp-validation-for="Date" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-warning mt-2">Update</button>
+</form>

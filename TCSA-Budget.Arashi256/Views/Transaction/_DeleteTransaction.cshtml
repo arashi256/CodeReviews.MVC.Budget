@@ -1,0 +1,7 @@
+﻿@model TCSA_Budget.Arashi256.Models.Transaction
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <p>Are you sure you want to delete the transaction <strong>@Model.Description</strong>?</p>
+    <p>This action cannot be undone.</p>
+    <button type="submit" class="btn btn-danger">Delete</button>
+</form>

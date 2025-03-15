@@ -1,0 +1,9 @@
+﻿@model TCSA_Budget.Arashi256.Models.Category
+<form asp-action="Create" method="post">
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label">Category Name</label>
+        <input asp-for="Name" class="form-control" required />
+        <span asp-validation-for="Name" class="text-danger"></span> <!-- Displays validation errors -->
+    </div>
+    <button type="submit" class="btn btn-success">Save</button>
+</form>

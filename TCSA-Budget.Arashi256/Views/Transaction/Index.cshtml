@@ -1,0 +1,334 @@
+﻿@using System.Text.Json
+@model List<TCSA_Budget.Arashi256.Models.Transaction>
+<div class="container mt-4 p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- Transactions header -->
+        <h2 class="fw-bold text-light">
+            Transactions (@(Model.Any() ? $"{Model.Min(t => t.Date):dd-MM-yyyy} - {Model.Max(t => t.Date):dd-MM-yyyy}" : "No Transactions"))
+        </h2>
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createTransactionModal">+ Add Transaction</button>
+    </div>
+    <!-- Filters & Search -->
+    <form method="get" asp-action="Index" id="filterForm">
+        <div class="row g-2 mb-3">
+            <!-- Category Filter -->
+            <div class="col-md-4">
+                <label for="categoryFilter" class="form-label text-light">Category</label>
+                <select name="categoryId" id="categoryFilter" class="form-select">
+                    <option value="">All Categories</option>
+                    @if (ViewData["Categories"] is List<TCSA_Budget.Arashi256.Models.Category> categories)
+                    {
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category.Id" selected="@(category.Id.ToString() == Context.Request.Query["categoryId"] ? "selected" : null)">
+                                @category.Name
+                            </option>
+                        }
+                    }
+                </select>
+            </div>
+            <!-- Date Range Filters -->
+            <div class="col-md-3">
+                <label for="fromDate" class="form-label text-light">From Date</label>
+                <input type="date" name="fromDate" id="fromDate" class="form-control"
+                       value="@(Model.Any() ? Model.Min(t => t.Date).ToString("yyyy-MM-dd") : "")" />
+            </div>
+            <div class="col-md-3">
+                <label for="toDate" class="form-label text-light">To Date</label>
+                <input type="date" name="toDate" id="toDate" class="form-control"
+                       value="@(Model.Any() ? Model.Max(t => t.Date).ToString("yyyy-MM-dd") : "")" />
+            </div>
+            <!-- Apply & Reset Buttons -->
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-primary w-100" type="submit">Apply</button>
+                <button class="btn btn-secondary w-100 ms-2" id="resetFilters">Reset</button>
+            </div>
+        </div>
+        <!-- Search Bar -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label for="searchTerm" class="form-label text-light">Search Transactions</label>
+                <div class="mb-3 d-flex">
+                    <input type="text" name="searchTerm" class="form-control me-2 rounded"
+                           placeholder="Search transactions..."
+                           value="@Context.Request.Query["searchTerm"]" />
+                    <button class="btn btn-primary rounded" type="submit">Search</button>
+                </div>
+            </div>
+        </div>
+    </form>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <!-- Transaction list -->
+            <table class="table table-dark table-hover text-center mb-0">
+                <thead class="bg-primary text-white">
+                    <tr>
+                        <th class="text-start ps-3 w-35">Description</th>
+                        <th class="w-20">Category</th>
+                        <th class="w-15">Amount</th>
+                        <th class="w-15">Date</th>
+                        <th class="text-center w-15"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <!-- Each transaction in the list -->
+                        <tr>
+                            <td class="text-start ps-3">@item.Description</td>
+                            <td>@(item.Category?.Name ?? "UNKNOWN")</td>
+                            <td>@item.Amount.ToString("C")</td>
+                            <td>@item.Date.ToShortDateString()</td>
+                            <td class="text-end pe-3">
+                                <!-- Edit and Delete buttons for each transaction -->
+                                <div class="d-flex flex-column flex-md-row gap-2 justify-content-end">
+                                    <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal-@item.Id">Edit</button>
+                                    <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal-@item.Id">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="transaction-total">
+                    <tr>
+                        <td colspan="5" class=" ps-3 text-start fw-bold">Total: @Model.Sum(t => t.Amount).ToString("C")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- Create Transaction Modal -->
+<div class="modal fade" id="createTransactionModal" tabindex="-1" data-bs-backdrop="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h4 class="modal-title">Add Transaction</h4>
+                <button type="button" class="btn-close text-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @await Html.PartialAsync("_CreateTransaction", new TCSA_Budget.Arashi256.Models.Transaction())
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Ensure Create Modal Reopens on Validation Failure -->
+@if (ViewData["ShowCreateModal"] as bool? == true)
+{
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var createTransactionModal = new bootstrap.Modal(document.getElementById("createTransactionModal"));
+            createTransactionModal.show();
+        });
+    </script>
+}
+@foreach (var item in Model)
+{
+    <!-- Edit Transaction Modal -->
+    <div class="modal fade @(ViewData["ShowEditModal"] as int? == item.Id ? "show d-block" : "")" id="editModal-@item.Id" tabindex="-1" aria-labelledby="deleteModalLabel-@item.Id"
+         data-bs-backdrop="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-white">
+                    <h4 class="modal-title">Edit Transaction</h4>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    @await Html.PartialAsync("_EditTransaction", item)
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Delete Transaction Modal -->
+    <div class="modal fade" id="deleteModal-@item.Id" data-bs-backdrop="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h4 class="modal-title">Delete Transaction</h4>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    @await Html.PartialAsync("_DeleteTransaction", item)
+                </div>
+            </div>
+        </div>
+    </div>
+}
+<!-- Here be Dragons, never, ever touch this. -->
+@{
+    var transactionsJson = System.Text.Json.JsonSerializer.Serialize(Model,
+        new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = false,
+                    ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve
+                });
+}
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var createTransactionModalElement = document.getElementById("createTransactionModal");
+            var createTransactionModal = new bootstrap.Modal(createTransactionModalElement);
+            var editTransactionModals = document.querySelectorAll("[id^='editModal-']");
+            var body = document.body;
+            // Store original create modal content for reset.
+            var createTransactionOriginalContent = createTransactionModalElement.querySelector(".modal-body").innerHTML;
+            // Fix: Prevent layout shift & maintain scrollbar width.
+            function fixModalScrollbar() {
+                let scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+                if (scrollbarWidth > 0) {
+                    body.style.paddingRight = `${scrollbarWidth}px`;
+                } else {
+                    body.style.paddingRight = "";
+                }
+            }
+            // Fix: Restore scrollbar & footer when closing the create modal.
+            function restorePageState() {
+                document.querySelector("footer")?.classList.remove("d-none");
+                body.style.paddingRight = ""; // Remove extra padding if applied.
+                body.style.overflow = ""; // Restore scrolling.
+                document.body.classList.remove("modal-open"); // Reset Bootstrap modal state.
+                var backdrop = document.querySelector(".modal-backdrop");
+                if (backdrop) backdrop.remove();
+            }
+            // Reset create modal content.
+            function resetCreateTransactionModal() {
+                createTransactionModalElement.querySelector(".modal-body").innerHTML = createTransactionOriginalContent;
+                createTransactionModalElement.querySelectorAll("input").forEach(input => input.value = "");
+                createTransactionModalElement.querySelector("input[name='Date']").value = new Date().toISOString().split('T')[0];
+                createTransactionModalElement.querySelector("input[name='Amount']").value = "0.00";
+                createTransactionModalElement.querySelectorAll("select").forEach(select => select.selectedIndex = 0);
+                createTransactionModalElement.querySelectorAll(".text-danger").forEach(span => span.textContent = "");
+                var validationSummary = createTransactionModalElement.querySelector(".validation-summary-errors");
+                if (validationSummary) validationSummary.innerHTML = "";
+            }
+            // Ensure create modal resets properly when reopened.
+            document.querySelector("[data-bs-target='#createTransactionModal']").addEventListener("click", function () {
+                resetCreateTransactionModal();
+                fixModalScrollbar(); // Ensure scrollbar width stays the same.
+                createTransactionModal.show();
+            });
+            // Restore scrollbar & footer when closing the create modal.
+            createTransactionModalElement.addEventListener("hidden.bs.modal", function () {
+                restorePageState();
+            });
+            // Fix: Ensure create modal resets & footer is restored on duplicate error.
+            document.querySelectorAll(".modal .btn-close").forEach(closeButton => {
+                closeButton.addEventListener("click", function () {
+                    var modal = this.closest(".modal");
+                    if (modal) {
+                        var modalInstance = bootstrap.Modal.getInstance(modal);
+                        if (modalInstance) modalInstance.hide();
+                        setTimeout(() => {
+                            modal.classList.remove("show", "d-block");
+                            modal.style.display = "none";
+                            restorePageState();
+                            resetCreateTransactionModal();
+                        }, 200);
+                    }
+                });
+            });
+            // Fix: Ensure edit modal header does not disappear on duplicate error.
+            editTransactionModals.forEach(modal => {
+                var originalContent = modal.querySelector(".modal-body").innerHTML;
+                modal.addEventListener("hidden.bs.modal", function () {
+                    console.log("Resetting Edit Transaction modal...");
+                    this.querySelector(".modal-body").innerHTML = originalContent;
+                    this.querySelectorAll("input").forEach(input => input.value = "");
+                    this.querySelectorAll(".text-danger").forEach(span => span.textContent = "");
+                    var validationSummary = this.querySelector(".validation-summary-errors");
+                    if (validationSummary) validationSummary.innerHTML = "";
+                    restorePageState();
+                });
+            });
+            // Fix: Reposition edit modal on validation errors (fixes header disappearance).
+            document.querySelectorAll("[data-bs-target^='#editModal-']").forEach(button => {
+                button.addEventListener("click", function () {
+                    var modalId = this.getAttribute("data-bs-target").substring(1);
+                    var editModalElement = document.getElementById(modalId);
+                    var editModal = new bootstrap.Modal(editModalElement);
+                    // Reset modal content before loading new data.
+                    var originalContent = editModalElement.querySelector(".modal-body").innerHTML;
+                    editModalElement.querySelector(".modal-body").innerHTML = "<p class='text-center text-warning'>Loading...</p>";
+                    // Fetch updated transaction data before opening modal.
+                    var transactionId = modalId.split("-")[1];
+                    fetch(`/Transaction/Edit?id=${transactionId}`)
+                        .then(response => response.text())
+                        .then(html => {
+                            editModalElement.querySelector(".modal-body").innerHTML = html;
+                            // Ensure Bootstrap recalculates modal position after validation.
+                            setTimeout(() => {
+                                bootstrap.Modal.getOrCreateInstance(editModalElement).handleUpdate();
+                            }, 200);
+                        })
+                        .catch(error => console.error("Error loading edit modal:", error));
+                    fixModalScrollbar(); // Keep the page layout stable.
+                    document.body.style.paddingRight = "0px";
+                    editModal.show();
+                });
+            });
+            // Prevent End Date from being before Start Date.
+            let fromDate = document.getElementById("fromDate");
+            let toDate = document.getElementById("toDate");
+            fromDate.addEventListener("change", function () {
+                if (toDate.value && new Date(fromDate.value) > new Date(toDate.value)) {
+                    toDate.value = fromDate.value;
+                }
+            });
+            toDate.addEventListener("change", function () {
+                if (new Date(toDate.value) < new Date(fromDate.value)) {
+                    toDate.value = fromDate.value;
+                }
+            });
+            // Restore footer if hidden due to modal state.
+            document.addEventListener("click", function () {
+                restorePageState();
+            });
+            // Reset Filters (including search Box).
+            let resetButton = document.getElementById("resetFilters");
+            if (resetButton) {
+                resetButton.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    // Reset search box value.
+                    let searchBox = document.querySelector("input[name='searchTerm']");
+                    if (searchBox) {
+                        searchBox.value = "";
+                    }
+                    // Reset category filter to "All Categories".
+                    let categoryFilter = document.getElementById("categoryFilter");
+                    if (categoryFilter) {
+                        categoryFilter.value = "";
+                    }
+                    // Reset date filters to the earliest and latest transaction dates.
+                    let transactionsJson = '@Html.Raw(transactionsJson)';
+                    let transactions;
+                    try {
+                        transactions = JSON.parse(transactionsJson);
+                    } catch (error) {
+                        transactions = [];
+                    }
+                    if (transactions.length > 0) {
+                        let parsedDates = transactions
+                            .map(t => new Date(t.date))
+                            .filter(d => !isNaN(d.getTime()));
+                        if (parsedDates.length > 0) {
+                            let minDate = new Date(Math.min(...parsedDates));
+                            let maxDate = new Date(Math.max(...parsedDates));
+                            fromDate.value = minDate.toISOString().split('T')[0];
+                            toDate.value = maxDate.toISOString().split('T')[0];
+                        } else {
+                            fromDate.value = "";
+                            toDate.value = "";
+                        }
+                    } else {
+                        fromDate.value = "";
+                        toDate.value = "";
+                    }
+                    // Submit the form after resetting.
+                    setTimeout(() => {
+                        document.querySelector("form").submit();
+                    }, 200);
+                });
+            }
+        });
+    </script>
+}
